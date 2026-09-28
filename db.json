@@ -1,0 +1,37 @@
+{
+    "User": [
+        {
+            "id": "15ec4919-82be-43cb-aed6-dcd1f7e3acc2",
+            "username": "Rick",
+            "email": "rick@gmail.com",
+            "age": 70,
+            "registration_date": "2026-10-04"
+        },
+        {
+            "id": "fb93e30b-85d3-480d-b7f4-28fe4bdf8264",
+            "username": "sdf",
+            "email": "sdfsd@sdfsdf.com",
+            "age": 23,
+            "registration_date": "2022-03-01"
+        }
+    ],
+    "Product": [
+        {
+            "id": "e3de5331-b562-4bf2-ae0d-7bf06ede39b2",
+            "name": "шава",
+            "price": 340,
+            "quantity": 2,
+            "category": "еда"
+        }
+    ],
+    "Order": [
+        {
+            "id": "075122e7-33eb-4687-8e43-e593d88679eb",
+            "user_id": "83dc5e54-cea6-4eb3-9521-ff3065ec4f25",
+            "product_id": "1cac6185-be27-4f3a-a489-b256311785c8",
+            "quantity": 2,
+            "order_date": "2022-02-01",
+            "status": "paid"
+        }
+    ]
+}
