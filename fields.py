@@ -43,12 +43,6 @@ class Field:
     def to_json(self, value):
         return value
 
-    def meta(self):
-        return {
-            "type": self.__class__.__name__,
-            "nullable": self.nullable,
-        }
-
 
 class StringField(Field):
 
@@ -121,30 +115,26 @@ class DateField(Field):
     def to_python(self, value):
         if isinstance(value, str):
             return datetime.strptime(value, DateField.DATE_FORMAT).date()
+
         return value
 
 
 class ModelMeta(type):
 
     def __new__(cls, name, bases, namespaces):
-        # 1. Наследуем поля родителей.
         fields = {}
         for base in bases:
             if hasattr(base, "_fields"):
                 fields.update(base._fields)
 
-        # 2. Собираем собственные поля.
         for attr_name, attr_value in namespaces.items():
             if isinstance(attr_value, Field):
                 fields[attr_name] = attr_value
 
-        # 3. Создаём класс.
         custom_class = super().__new__(cls, name, bases, namespaces)
 
-        # 4. Прикрепляем словарь полей.
         custom_class._fields = fields
 
-        # 5. Генерируем методы, если поля есть.
         if fields:
             custom_class.__init__ = cls._make_init(fields)
             custom_class.__repr__ = cls._make_repr(name, fields)
@@ -158,49 +148,40 @@ class ModelMeta(type):
         field_names = list(fields.keys())
 
         def __init__(self, **kwargs):
-            # нет левых полей
             for key in kwargs:
                 if key not in field_names:
-                    raise TypeError(f"Неизвестное поле: '{key}'")
-            # заполняем
-            for fname in field_names:
-                if fname in kwargs:
-                    setattr(self, fname, kwargs[fname])
-                elif fields[fname].nullable:
-                    setattr(self, fname, None)
+                    raise TypeError(f"Неизвестное поле: {key}")
+            for field_name in field_names:
+                if field_name in kwargs:
+                    setattr(self, field_name, kwargs[field_name])
+                elif fields[field_name].nullable:
+                    setattr(self, field_name, None)
 
         return __init__
 
-    # ---------- генератор __repr__ ----------
     @staticmethod
     def _make_repr(class_name, fields):
         def __repr__(self):
-            parts = [f"{fname}={getattr(self, fname, None)!r}"
-                     for fname in fields]
-            return f"{class_name}({', '.join(parts)})"
+            parts = [f"{field_name}={getattr(self, field_name, None)}" for field_name in fields]
+            return f"{class_name}({", ".join(parts)})"
 
         return __repr__
 
-    # ---------- генератор to_dict (сериализация) ----------
     @staticmethod
     def _make_to_dict(fields):
         def to_dict(self):
-            return {
-                fname: desc.to_json(getattr(self, fname, None))
-                for fname, desc in fields.items()
-            }
+            return {field_name: descriptor.to_json(getattr(self, field_name, None)) for field_name, descriptor in fields.items() }
 
         return to_dict
 
-    # ---------- генератор from_dict (десериализация) ----------
     @staticmethod
     def _make_from_dict(fields):
         def from_dict(cls, data):
-            obj = cls.__new__(cls)  # без вызова __init__
-            for fname, desc in fields.items():
-                raw = data.get(fname)
-                value = desc.to_python(raw)
-                setattr(obj, fname, value)
+            obj = cls.__new__(cls)
+            for field_name, descriptor in fields.items():
+                raw = data.get(field_name)
+                value = descriptor.to_python(raw)
+                setattr(obj, field_name, value)
             return obj
 
         return from_dict
@@ -210,30 +191,24 @@ class Model(metaclass=ModelMeta):
     FILE_NAME = "db.json"
     ID = IntegerField(min_value=1, nullable=False)
 
-    # ---------- магические методы, которые НЕ генерируются ----------
-
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return NotImplemented
-        return self.to_dict() == other.to_dict()
+        return self.ID == other.ID
 
     def __hash__(self):
-        items = tuple(sorted(self.to_dict().items()))
-        return hash((type(self).__name__, items))
+        return hash((type(self).__name__, self.ID))
 
-    # ---------- валидация всех полей ----------
     def validate(self):
         errors = []
-        for fname, desc in self._fields.items():
+        for field_name, descriptor in self._fields.items():
             try:
-                desc.validate(getattr(self, fname, None))
+                descriptor.validate(getattr(self, field_name, None))
             except (TypeError, ValueError) as e:
                 errors.append(str(e))
         if errors:
-            raise ValueError("Ошибки валидации:\n  - " + "\n  - ".join(errors))
-        return True
+            raise ValueError(f"Ошибки валидации: ${" ; ".join(errors)}")
 
-    # ---------- работа с файлом ----------
     @classmethod
     def _read_all(cls):
         if not os.path.exists(cls.FILE_NAME):
@@ -306,4 +281,3 @@ class Model(metaclass=ModelMeta):
             return False
         cls._write_all(new_records)
         return True
-
