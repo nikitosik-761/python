@@ -162,7 +162,7 @@ class ModelMeta(type):
     def _make_repr(class_name, fields):
         def __repr__(self):
             parts = [f"{field_name}={getattr(self, field_name, None)}" for field_name in fields]
-            return f"{class_name}({", ".join(parts)})"
+            return f"{class_name}({', '.join(parts)})"
 
         return __repr__
 
@@ -188,15 +188,15 @@ class ModelMeta(type):
 
 class Model(metaclass=ModelMeta):
     FILE_NAME = "db.json"
-    ID = StringField(nullable=False)
+    id = StringField(nullable=False)
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return NotImplemented
-        return self.ID == other.ID
+        return self.id == other.id
 
     def __hash__(self):
-        return hash((type(self).__name__, self.ID))
+        return hash((type(self).__name__, self.id))
 
     def validate(self):
         for field_name, descriptor in self._fields.items():
@@ -229,11 +229,11 @@ class Model(metaclass=ModelMeta):
     def save(self):
         self.validate()
         entities = self._read_all()
-        data = self.to_dict(self)
+        data = self.to_dict()
 
         new_id = str(uuid.uuid4())
         data["id"] = new_id
-        self.ID = new_id
+        self.id = new_id
 
         entities.append(data)
 
@@ -258,12 +258,3 @@ class Model(metaclass=ModelMeta):
             for rec in cls._read_all()
             if all(rec.get(k) == v for k, v in kwargs.items())
         ]
-
-    @classmethod
-    def delete(cls, id_):
-        records = cls._read_all()
-        new_records = [r for r in records if r.get("id") != id_]
-        if len(new_records) == len(records):
-            return False
-        cls._write_all(new_records)
-        return True
