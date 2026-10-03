@@ -1,6 +1,7 @@
 import json
 import re
 import os
+import uuid
 from datetime import datetime
 from datetime import date
 
@@ -81,7 +82,6 @@ class IntegerField(Field):
 
 
 class EmailField(StringField):
-
     EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
     def __init__(self, nullable=False):
@@ -89,7 +89,6 @@ class EmailField(StringField):
 
 
 class DateField(Field):
-
     DATE_FORMAT = "%Y-%m-%d"
 
     def __init__(self, nullable=False):
@@ -170,7 +169,7 @@ class ModelMeta(type):
     @staticmethod
     def _make_to_dict(fields):
         def to_dict(self):
-            return {field_name: descriptor.to_json(getattr(self, field_name, None)) for field_name, descriptor in fields.items() }
+            return {field_name: descriptor.to_json(getattr(self, field_name, None)) for field_name, descriptor in fields.items()}
 
         return to_dict
 
@@ -186,10 +185,10 @@ class ModelMeta(type):
 
         return from_dict
 
-class Model(metaclass=ModelMeta):
 
+class Model(metaclass=ModelMeta):
     FILE_NAME = "db.json"
-    ID = IntegerField(min_value=1, nullable=False)
+    ID = StringField(nullable=False)
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
@@ -213,7 +212,7 @@ class Model(metaclass=ModelMeta):
         return data.get(cls.__name__, [])
 
     @classmethod
-    def _write_all(cls, records):
+    def _write_all(cls, entities):
         if not os.path.exists(cls.FILE_NAME):
             raise ValueError("Путь не существует")
 
@@ -222,31 +221,24 @@ class Model(metaclass=ModelMeta):
         with open(cls.FILE_NAME, "r", encoding="utf-8") as file:
             all_data = json.load(file)
 
-        all_data[cls.__name__] = records
+        all_data[cls.__name__] = entities
 
         with open(cls.FILE_NAME, "w", encoding="utf-8") as file:
             json.dump(all_data, file, ensure_ascii=False, indent=4)
 
-    # ---------- CRUD ----------
     def save(self):
         self.validate()
-        records = self._read_all()
-        data = self.to_dict()
+        entities = self._read_all()
+        data = self.to_dict(self)
 
-        if data.get("id") is None:
-            new_id = max((r.get("id") or 0 for r in records), default=0) + 1
-            data["id"] = new_id
-            self.ID = new_id
+        new_id = str(uuid.uuid4())
+        data["id"] = new_id
+        self.ID = new_id
 
-        for i, r in enumerate(records):
-            if r.get("id") == data["id"]:
-                records[i] = data
-                break
-        else:
-            records.append(data)
+        entities.append(data)
 
-        self._write_all(records)
-        return self
+        self._write_all(entities)
+        print("Сохранение успешно выполнено")
 
     @classmethod
     def load(cls, id_):
