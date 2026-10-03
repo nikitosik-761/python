@@ -200,38 +200,32 @@ class Model(metaclass=ModelMeta):
         return hash((type(self).__name__, self.ID))
 
     def validate(self):
-        errors = []
         for field_name, descriptor in self._fields.items():
-            try:
-                descriptor.validate(getattr(self, field_name, None))
-            except (TypeError, ValueError) as e:
-                errors.append(str(e))
-        if errors:
-            raise ValueError(f"Ошибки валидации: ${" ; ".join(errors)}")
+            descriptor.validate(getattr(self, field_name, None))
 
     @classmethod
     def _read_all(cls):
         if not os.path.exists(cls.FILE_NAME):
-            return []
-        with open(cls.FILE_NAME, "r", encoding="utf-8") as f:
-            try:
-                data = json.load(f)
-            except json.JSONDecodeError:
-                return []
+            raise ValueError("Путь не существует")
+        with open(cls.FILE_NAME, "r", encoding="utf-8") as file:
+            data = json.load(file)
+
         return data.get(cls.__name__, [])
 
     @classmethod
     def _write_all(cls, records):
+        if not os.path.exists(cls.FILE_NAME):
+            raise ValueError("Путь не существует")
+
         all_data = {}
-        if os.path.exists(cls.FILE_NAME):
-            with open(cls.FILE_NAME, "r", encoding="utf-8") as f:
-                try:
-                    all_data = json.load(f)
-                except json.JSONDecodeError:
-                    all_data = {}
+
+        with open(cls.FILE_NAME, "r", encoding="utf-8") as file:
+            all_data = json.load(file)
+
         all_data[cls.__name__] = records
-        with open(cls.FILE_NAME, "w", encoding="utf-8") as f:
-            json.dump(all_data, f, ensure_ascii=False, indent=2)
+
+        with open(cls.FILE_NAME, "w", encoding="utf-8") as file:
+            json.dump(all_data, file, ensure_ascii=False, indent=4)
 
     # ---------- CRUD ----------
     def save(self):
