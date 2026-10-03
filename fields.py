@@ -258,3 +258,29 @@ class Model(metaclass=ModelMeta):
             for rec in cls._read_all()
             if all(rec.get(k) == v for k, v in kwargs.items())
         ]
+
+
+class User(Model):
+    username = StringField(min_length=3, max_length=50)
+    email = EmailField()
+    age = IntegerField(min_value=0, max_value=150, nullable=True)
+    registration_date = DateField()
+
+
+class Product(Model):
+    name = StringField(min_length=1, max_length=100)
+    price = IntegerField(min_value=0)
+    quantity = IntegerField(min_value=0)
+    category = StringField(min_length=1, max_length=50)
+
+
+class Order(Model):
+    user_id = StringField(min_length=1)
+    product_id = StringField(min_length=1)
+    quantity = IntegerField(min_value=1)
+    order_date = DateField()
+    status = StringField(
+        min_length=1,
+        max_length=20,
+        regex=r"^[a-z]+$"
+    )
